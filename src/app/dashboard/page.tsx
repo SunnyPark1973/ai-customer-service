@@ -84,7 +84,7 @@ export default function Dashboard() {
     setUploading(true);
     const { error } = await supabase.storage
       .from("business-files")
-      .upload(`${user.id}/${file.name}`, file, { upsert: true });
+      .upload(`${user.id}/${Date.now()}_${encodeURIComponent(file.name)}`, file, { upsert: true });
     if (!error) {
       await loadFiles(user.id);
       alert("파일이 업로드되었습니다!");
