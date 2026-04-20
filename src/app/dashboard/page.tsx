@@ -66,9 +66,7 @@ export default function Dashboard() {
     const { error } = await supabase.storage
       .from("business-logos")
       .upload(path, file, { upsert: true });
-    } else {
-  alert("로고 업로드 실패: " + error.message);
-}
+    if (!error) {
       const { data: urlData } = supabase.storage
         .from("business-logos")
         .getPublicUrl(path);
@@ -76,6 +74,9 @@ export default function Dashboard() {
       await supabase.from("Business").upsert({
         user_id: user.id, logo_url: urlData.publicUrl
       }, { onConflict: "user_id" });
+      alert("로고가 업로드되었습니다!");
+    } else {
+      alert("로고 업로드 실패: " + error.message);
     }
     setLogoUploading(false);
   };
