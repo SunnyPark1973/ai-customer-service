@@ -7,6 +7,12 @@ import { useRouter } from "next/navigation";
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("profile");
+  const [business, setBusiness] = useState<any>(null);
+  const [name, setName] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [phone, setPhone] = useState("");
+  const [themeColor, setThemeColor] = useState("#3B82F6");
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
 
   const supabase = createBrowserClient(
@@ -15,26 +21,58 @@ export default function Dashboard() {
   );
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) {
         router.push("/");
       } else {
         setUser(data.user);
+        const { data: biz } = await supabase
+          .from("Business")
+          .select("*")
+          .eq("user_id", data.user.id)
+          .single();
+        if (biz) {
+          setBusiness(biz);
+          setName(biz.name || "");
+          setIndustry(biz.industry || "");
+          setPhone(biz.phone || "");
+          setThemeColor(biz.theme_color || "#3B82F6");
+        }
       }
     });
   }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    if (business) {
+      await supabase.from("Business").update({
+        name, industry, phone, theme_color: themeColor
+      }).eq("user_id", user.id);
+    } else {
+      await supabase.from("Business").insert({
+        user_id: user.id, name, industry, phone, theme_color: themeColor
+      });
+    }
+    setSaving(false);
+    alert("저장되었습니다!");
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/");
   };
 
+  const colors = ["#3B82F6","#EC4899","#8B5CF6","#10B981","#F59E0B","#EF4444","#000000"];
+
   if (!user) return <div className="flex items-center justify-center min-h-screen">로딩중...</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-900">AI 고객상담 관리자</h1>
+      <nav style={{borderBottom: `2px solid ${themeColor}`}} className="bg-white px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <div style={{background: themeColor}} className="w-2 h-2 rounded-full"></div>
+          <h1 className="text-xl font-bold text-gray-900">AI 고객상담 관리자</h1>
+        </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-500">{user.email}</span>
           <button onClick={handleLogout} className="text-sm text-red-500 hover:text-red-700">로그아웃</button>
@@ -53,8 +91,9 @@ export default function Dashboard() {
               <li key={item.id}>
                 <button
                   onClick={() => setActiveTab(item.id)}
+                  style={activeTab === item.id ? {background: `${themeColor}15`, color: themeColor} : {}}
                   className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeTab === item.id ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-100"
+                    activeTab === item.id ? "" : "text-gray-600 hover:bg-gray-100"
                   }`}
                 >
                   {item.label}
@@ -78,17 +117,33 @@ export default function Dashboard() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">상호명</label>
-                    <input type="text" placeholder="예) 강남 성형외과" className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input value={name} onChange={e => setName(e.target.value)} type="text" placeholder="예) 강남 성형외과" className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">업종</label>
-                    <input type="text" placeholder="예) 성형외과, 쇼핑몰, 마트" className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input value={industry} onChange={e => setIndustry(e.target.value)} type="text" placeholder="예) 성형외과, 쇼핑몰, 마트" className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">대표 연락처</label>
-                    <input type="text" placeholder="예) 02-1234-5678" className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input value={phone} onChange={e => setPhone(e.target.value)} type="text" placeholder="예) 02-1234-5678" className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
-                  <button className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700">저장하기</button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">테마 컬러</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {colors.map(c => (
+                        <button
+                          key={c}
+                          onClick={() => setThemeColor(c)}
+                          style={{background: c, border: themeColor === c ? "3px solid #000" : "3px solid transparent"}}
+                          className="w-8 h-8 rounded-full"
+                        />
+                      ))}
+                      <input type="color" value={themeColor} onChange={e => setThemeColor(e.target.value)} className="w-8 h-8 rounded-full cursor-pointer border-0" />
+                    </div>
+                  </div>
+                  <button onClick={handleSave} style={{background: themeColor}} className="w-full text-white py-2 rounded-lg text-sm font-medium hover:opacity-90">
+                    {saving ? "저장 중..." : "저장하기"}
+                  </button>
                 </div>
               </div>
             </div>
