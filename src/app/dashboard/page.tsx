@@ -15,7 +15,10 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [files, setFiles] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const supabase = createBrowserClient(
@@ -40,6 +43,7 @@ export default function Dashboard() {
           setIndustry(biz.industry || "");
           setPhone(biz.phone || "");
           setThemeColor(biz.theme_color || "#3B82F6");
+          setLogoUrl(biz.logo_url || "");
         }
         loadFiles(data.user.id);
       }
@@ -51,6 +55,27 @@ export default function Dashboard() {
       .from("business-files")
       .list(userId);
     if (data) setFiles(data);
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setLogoUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/logo.${ext}`;
+    const { error } = await supabase.storage
+      .from("business-logos")
+      .upload(path, file, { upsert: true });
+    if (!error) {
+      const { data: urlData } = supabase.storage
+        .from("business-logos")
+        .getPublicUrl(path);
+      setLogoUrl(urlData.publicUrl);
+      await supabase.from("Business").upsert({
+        user_id: user.id, logo_url: urlData.publicUrl
+      }, { onConflict: "user_id" });
+    }
+    setLogoUploading(false);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,7 +109,7 @@ export default function Dashboard() {
       }).eq("user_id", user.id);
     } else {
       await supabase.from("Business").insert({
-        user_id: user.id, name, industry, phone, theme_color: themeColor
+        user_id: user.id, name, industry, phone, theme_color: themeColor, logo_url: logoUrl
       });
     }
     setSaving(false);
@@ -103,9 +128,10 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <nav style={{borderBottom: `2px solid ${themeColor}`}} className="bg-white px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div style={{background: themeColor}} className="w-2 h-2 rounded-full"></div>
-          <h1 className="text-xl font-bold text-gray-900">AI 고객상담 관리자</h1>
+        <div className="flex items-center gap-3">
+          {logoUrl && <img src={logoUrl} alt="logo" className="w-8 h-8 rounded-full object-cover" />}
+          <div style={{background: !logoUrl ? themeColor : "transparent"}} className={!logoUrl ? "w-2 h-2 rounded-full" : ""}></div>
+          <h1 className="text-xl font-bold text-gray-900">{name || "AI 고객상담 관리자"}</h1>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-500">{user.email}</span>
@@ -144,9 +170,17 @@ export default function Dashboard() {
               <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-2xl">
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">업체 로고</label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 cursor-pointer">
-                    <p className="text-gray-400 text-sm">클릭하여 로고 업로드</p>
+                  <div
+                    onClick={() => logoInputRef.current?.click()}
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 cursor-pointer"
+                  >
+                    {logoUrl ? (
+                      <img src={logoUrl} alt="logo" className="w-20 h-20 rounded-full object-cover mx-auto" />
+                    ) : (
+                      <p className="text-gray-400 text-sm">{logoUploading ? "업로드 중..." : "클릭하여 로고 업로드"}</p>
+                    )}
                   </div>
+                  <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                 </div>
                 <div className="space-y-4">
                   <div>
@@ -192,7 +226,6 @@ export default function Dashboard() {
                   <p className="text-gray-400">{uploading ? "업로드 중..." : "PDF, TXT 파일을 클릭하여 업로드"}</p>
                 </div>
                 <input ref={fileInputRef} type="file" accept=".pdf,.txt,.csv" onChange={handleFileUpload} className="hidden" />
-
                 {files.length > 0 && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-700 mb-3">업로드된 파일</h3>
