@@ -66,7 +66,9 @@ export default function Dashboard() {
     const { error } = await supabase.storage
       .from("business-logos")
       .upload(path, file, { upsert: true });
-    if (!error) {
+    } else {
+  alert("로고 업로드 실패: " + error.message);
+}
       const { data: urlData } = supabase.storage
         .from("business-logos")
         .getPublicUrl(path);
