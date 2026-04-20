@@ -58,6 +58,7 @@ export default function Dashboard() {
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    alert("user: " + JSON.stringify(user));
     const file = e.target.files?.[0];
     if (!file || !user) return;
     setLogoUploading(true);
