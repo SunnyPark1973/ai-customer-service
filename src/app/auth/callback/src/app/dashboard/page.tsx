@@ -1,0 +1,142 @@
+"use client";
+
+import { createBrowserClient } from "@supabase/ssr";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+export default function Dashboard() {
+  const [user, setUser] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("profile");
+  const router = useRouter();
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  );
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) {
+        router.push("/");
+      } else {
+        setUser(data.user);
+      }
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/");
+  };
+
+  if (!user) return <div className="flex items-center justify-center min-h-screen">로딩중...</div>;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* 상단 네비게이션 */}
+      <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+        <h1 className="text-xl font-bold text-gray-900">AI 고객상담 관리자</h1>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-gray-500">{user.email}</span>
+          <button
+            onClick={handleLogout}
+            className="text-sm text-red-500 hover:text-red-700"
+          >
+            로그아웃
+          </button>
+        </div>
+      </nav>
+
+      <div className="flex">
+        {/* 사이드바 */}
+        <aside className="w-56 min-h-screen bg-white border-r border-gray-200 p-4">
+          <ul className="space-y-1">
+            {[
+              { id: "profile", label: "업체 정보" },
+              { id: "files", label: "파일 업로드" },
+              { id: "chat", label: "채팅 모니터링" },
+              { id: "reports", label: "리포트" },
+            ].map((item) => (
+              <li key={item.id}>
+                <button
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    activeTab === item.id
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </aside>
+
+        {/* 메인 콘텐츠 */}
+        <main className="flex-1 p-8">
+          {activeTab === "profile" && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">업체 정보</h2>
+              <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-2xl">
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">업체 로고</label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 cursor-pointer">
+                    <p className="text-gray-400 text-sm">클릭하여 로고 업로드</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">상호명</label>
+                    <input type="text" placeholder="예) 강남 성형외과" className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">업종</label>
+                    <input type="text" placeholder="예) 성형외과, 쇼핑몰, 마트" className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">대표 연락처</label>
+                    <input type="text" placeholder="예) 02-1234-5678" className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <button className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+                    저장하기
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "files" && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">파일 업로드</h2>
+              <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-2xl">
+                <p className="text-sm text-gray-500 mb-4">AI 학습용 파일을 업로드하세요. PDF 형식을 권장합니다.</p>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-blue-400 cursor-pointer">
+                  <p className="text-gray-400">PDF, TXT 파일을 드래그하거나 클릭하여 업로드</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "chat" && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">채팅 모니터링</h2>
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <p className="text-gray-400 text-sm">아직 채팅 내역이 없습니다.</p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "reports" && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">리포트</h2>
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <p className="text-gray-400 text-sm">아직 리포트가 없습니다.</p>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
